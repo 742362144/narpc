@@ -44,7 +44,14 @@ public class NaRPCServerChannel {
 		}
 		return ticket;
 	}
-	
+
+	/**
+	 * 先调用makeMessage构造response并写入到buffer中
+	 * 然后写入到channel中
+	 * @param ticket
+	 * @param message
+	 * @throws IOException
+	 */
 	public void transmitMessage(long ticket, NaRPCMessage message) throws IOException {
 		NaRPCProtocol.makeMessage(ticket, message, buffer);
 		while(buffer.hasRemaining()){

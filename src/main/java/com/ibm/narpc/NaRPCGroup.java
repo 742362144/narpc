@@ -23,6 +23,10 @@ package com.ibm.narpc;
 
 import org.slf4j.Logger;
 
+/**
+ * 作为NaRPCServerGroup和NaRPCClientGroup，记录该RPC组的配置
+ * 默认的NaRPCEndpoint buffer队列深度，消息的大小（NaRPCEndpoint会用来初始化buffer）
+ */
 public class NaRPCGroup {
 	private static final Logger LOG = NaRPCUtils.getLogger();
 	

@@ -30,7 +30,8 @@ import org.slf4j.Logger;
 public class NaRPCServerGroup<R extends NaRPCMessage, T extends NaRPCMessage> extends NaRPCGroup {
 	private static final Logger LOG = NaRPCUtils.getLogger();
 	public static final int DEFAULT_DISPATCHARRAY = 1;
-	
+
+	// 请求工作处理线程
 	private ArrayList<NaRPCDispatcher<R,T>> dispatcherArray;
 	private AtomicInteger arrayIndex;
 	
@@ -45,6 +46,7 @@ public class NaRPCServerGroup<R extends NaRPCMessage, T extends NaRPCMessage> ex
 	public NaRPCServerGroup(NaRPCService<R,T> service, int queueDepth, int messageSize, boolean nodelay, int arraySize) throws IOException{
 		super(queueDepth, messageSize, nodelay);
 		this.dispatcherArray = new ArrayList<NaRPCDispatcher<R,T>>(arraySize);
+		//启动多个线程使得NaRPCDispatcher去处理请求
 		for (int i = 0; i < arraySize; i++) {
 			NaRPCDispatcher<R,T> dispatcher = new NaRPCDispatcher<R,T>(this, service, i);
 			Thread thread = new Thread(dispatcher);
@@ -59,6 +61,11 @@ public class NaRPCServerGroup<R extends NaRPCMessage, T extends NaRPCMessage> ex
 		return new NaRPCServerEndpoint<R,T>(this);
 	}
 
+	/**
+	 * 将NaRPCServerChannel请求管道绑定到对应的NaRPCDispatcher处理线程
+	 * @param endpoint
+	 * @throws IOException
+	 */
 	public void registerEndpoint(NaRPCServerChannel endpoint) throws IOException {
 		int index = getAndIncrement() % dispatcherArray.size();
 		NaRPCDispatcher<R,T> dispatcher = dispatcherArray.get(index);

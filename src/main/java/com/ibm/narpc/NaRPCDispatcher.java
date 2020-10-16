@@ -30,6 +30,12 @@ import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 
+/**
+ * 具体RPC请求的处理程序
+ * 接收NaRPCServerGroup绑定的NaRPCServerChannel，并从管道获得请求信息
+ * @param <R>
+ * @param <T>
+ */
 public class NaRPCDispatcher<R extends NaRPCMessage, T extends NaRPCMessage> implements Runnable {
     static private Logger LOG = NaRPCUtils.getLogger();
     
@@ -56,7 +62,12 @@ public class NaRPCDispatcher<R extends NaRPCMessage, T extends NaRPCMessage> imp
         this.isAlive = true;
     }
 
-    public void addChannel(NaRPCServerChannel endpoint) throws IOException {
+	/**
+	 * incomingChannels，交由线程处理
+	 * @param endpoint
+	 * @throws IOException
+	 */
+	public void addChannel(NaRPCServerChannel endpoint) throws IOException {
 		this.service.addEndpoint(endpoint);
 		incomingChannels.add(endpoint);
     	selector.wakeup();
@@ -84,6 +95,7 @@ public class NaRPCDispatcher<R extends NaRPCMessage, T extends NaRPCMessage> imp
 							long ticket = channel.receiveMessage(request);
 							if(ticket > 0){
 								T response = service.processRequest(request);
+								// 发送response
 								channel.transmitMessage(ticket, response);
 							} else if (ticket < 0){
 								LOG.info("closing channel " + channel.address());
@@ -104,7 +116,11 @@ public class NaRPCDispatcher<R extends NaRPCMessage, T extends NaRPCMessage> imp
 		}
 		LOG.info("closing the select call");
 	}
-	
+
+	/**
+	 * 处理到来的channel，将其注册到selector中
+	 * @throws IOException
+	 */
 	public void processIncomingChannels() throws IOException{
 		NaRPCServerChannel channel = incomingChannels.poll();
 		while(channel != null){

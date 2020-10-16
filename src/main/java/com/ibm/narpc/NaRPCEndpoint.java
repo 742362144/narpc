@@ -69,20 +69,34 @@ public class NaRPCEndpoint<R extends NaRPCMessage, T extends NaRPCMessage> {
 		this.channel.close();
 	}
 
+	/**
+	 * 发送rpc请求，并获得future
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws IOException
+	 */
 	public NaRPCFuture<R,T> issueRequest(R request, T response) throws IOException {
+		// 从队列里获得buffer
 		ByteBuffer buffer = getBuffer();
 		while(buffer == null){
 			buffer = getBuffer();
 		}
+
 		long ticket = sequencer.getAndIncrement();
+		// 构建请求消息体
 		NaRPCProtocol.makeMessage(ticket, request, buffer);
 		NaRPCFuture<R,T> future = new NaRPCFuture<R,T>(this, request, response, ticket);
 		pendingRPCs.put(ticket, future);
 
+		// 将buffer内容写入到channel中
+		// buffer size由NaRPCGroup初始化的messageSize指定
 		while(!writeLock.tryLock());
 		channel.write(buffer);
 		while(buffer.hasRemaining()){
+			// 从channel读取数据
 			pollResponse();
+
 			channel.write(buffer);
 		}
 		writeLock.unlock();
@@ -91,12 +105,19 @@ public class NaRPCEndpoint<R extends NaRPCMessage, T extends NaRPCMessage> {
 		return future;
 	}
 
+	/**
+	 * 从channel中读取数据并存入buffer中
+	 * NaRPCFuture将读取到buffer中的数据根据Response实现的update方法进行解析
+	 * @throws IOException
+	 */
 	void pollResponse() throws IOException {
 		ByteBuffer buffer = getBuffer();
 		if (buffer == null){
 			return;
 		}
 		if(readLock.tryLock()){
+			// 一直从channel中读取数据，直到读取完毕
+			// fetchBuffer返回buffer中数据的大小，ticket > 0表明buffer中有数据
 			long ticket = NaRPCProtocol.fetchBuffer(channel, buffer);
 			readLock.unlock();
 			if (ticket > 0){
